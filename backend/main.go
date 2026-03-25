@@ -43,15 +43,29 @@ func chatHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	response, _ := client.Messages.New(r.Context(), anthropic.MessageNewParams{
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+
+	stream := client.Messages.NewStreaming(r.Context(), anthropic.MessageNewParams{
 		Model:     anthropic.ModelClaudeOpus4_6,
 		MaxTokens: 1024,
 		Messages:  messages,
 	})
 
-	reply := response.Content[0].AsText().Text
-
-	json.NewEncoder(w).Encode(ResponseBody{Reply: reply})
+	for stream.Next() {
+		event := stream.Current()
+		switch eventVariant := event.AsAny().(type) {
+		case anthropic.ContentBlockDeltaEvent:
+			switch deltaVariant := eventVariant.Delta.AsAny().(type) {
+			case anthropic.TextDelta:
+				if deltaVariant.Text != "" {
+					fmt.Fprintf(w, "data: %s\n\n", deltaVariant.Text)
+					w.(http.Flusher).Flush()
+				}
+			}
+		}
+	}
 }
 
 func startServer() {

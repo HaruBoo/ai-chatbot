@@ -26,8 +26,32 @@ export default function Home() {
       body: JSON.stringify({ messages: [...messages, userMessage] }),
     })
 
-    const data = await res.json()
-    setMessages((prev) => [...prev, { role: "assistant", content: data.reply }])
+    const reader = res.body!.getReader()
+    const decoder = new TextDecoder()
+    let reply = ""
+
+    setMessages((prev) => [...prev, { role: "assistant", content: "" }])
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      const chunk = decoder.decode(value)
+      const lines = chunk.split("\n")
+
+      for (const line of lines) {
+        if (line.startsWith("data: ")) {
+          const text = line.slice(6)
+          reply += text
+          setMessages((prev) => {
+            const updated = [...prev]
+            updated[updated.length - 1] = { role: "assistant", content: reply }
+            return updated
+          })
+        }
+      }
+    }
+
     setLoading(false)
   }
 
@@ -48,7 +72,7 @@ export default function Home() {
             {msg.content}
           </div>
         ))}
-        {loading && (
+        {loading && messages[messages.length - 1]?.role !== "assistant" && (
           <div className="bg-gray-100 p-3 rounded-lg max-w-xl">考え中...</div>
         )}
       </div>
