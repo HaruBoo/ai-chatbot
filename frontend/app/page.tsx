@@ -20,7 +20,7 @@ export default function Home() {
     setInput("")
     setLoading(true)
 
-    const res = await fetch("/api/chat", {
+    const res = await fetch("http://localhost:8080/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ messages: [...messages, userMessage] }),
