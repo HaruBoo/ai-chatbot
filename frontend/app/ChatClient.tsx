@@ -54,12 +54,12 @@ export default function ChatClient({ session }: { session: Session }) {
 
     const userMessage: Message = { role: "user", content: input }
     setMessages((prev) => [...prev, userMessage])
-    setInput("")  // ← これがあるか確認
+    setInput("")  
     setLoading(true)
 
     await saveMessage("user", input)
 
-    const res = await fetch("http://localhost:8080/chat", {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ messages: [...messages, userMessage] }),
@@ -133,7 +133,12 @@ export default function ChatClient({ session }: { session: Session }) {
           className="flex-1 border rounded-lg px-4 py-2"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+              e.preventDefault()
+              sendMessage()
+            }
+          }}
           placeholder="メッセージを入力..."
         />
         <button
