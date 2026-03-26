@@ -1,7 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { signOut } from "next-auth/react"
+import { supabase } from "../lib/supabase"
 
 type Message = {
   role: "user" | "assistant"
@@ -21,13 +22,42 @@ export default function ChatClient({ session }: { session: Session }) {
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
 
+  const userId = session.user?.email ?? "anonymous"
+
+  // 過去の会話を取得
+  useEffect(() => {
+    const fetchHistory = async () => {
+      const { data } = await supabase
+        .from("conversations")
+        .select("role, content")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: true })
+
+      if (data) {
+        setMessages(data as Message[])
+      }
+    }
+    fetchHistory()
+  }, [userId])
+
+  // メッセージをSupabaseに保存
+  const saveMessage = async (role: string, content: string) => {
+    await supabase.from("conversations").insert({
+      user_id: userId,
+      role,
+      content,
+    })
+  }
+
   const sendMessage = async () => {
     if (!input.trim()) return
 
     const userMessage: Message = { role: "user", content: input }
     setMessages((prev) => [...prev, userMessage])
-    setInput("")
+    setInput("")  // ← これがあるか確認
     setLoading(true)
+
+    await saveMessage("user", input)
 
     const res = await fetch("http://localhost:8080/chat", {
       method: "POST",
@@ -61,6 +91,7 @@ export default function ChatClient({ session }: { session: Session }) {
       }
     }
 
+    await saveMessage("assistant", reply)
     setLoading(false)
   }
 
