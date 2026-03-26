@@ -1,6 +1,6 @@
 module github.com/HaruBoo/ai-chatbot/backend
 
-go 1.26.1
+go 1.26.0
 
 require (
 	github.com/anthropics/anthropic-sdk-go v1.27.1 // indirect
